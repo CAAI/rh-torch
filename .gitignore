@@ -6,3 +6,4 @@ rhtorch.egg-info
 rhtorch/models/dev/*
 !rhtorch/models/dev/__init__.py
 my.stdout
+.spyproject/
