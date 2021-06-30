@@ -67,9 +67,9 @@ def main():
 
     # Set local data_generator
     sys.path.insert(1, args.input)
-    import data_generator 
+    import data_generator
     data_gen = getattr(data_generator, configs['data_generator'])
-    data_module = data_gen(configs)
+    data_module = data_gen(configs, quick_test=is_test)
     data_module.prepare_data()
     data_module.setup()
     print('Done preparing the data.')
@@ -165,7 +165,7 @@ def main():
     trainer.fit(model, datamodule=data_module)
 
     # add useful info to saved configs
-    user_configs.hparams['model_dir'] = model_path
+    user_configs.hparams['model_dir'] = str(model_path)
     user_configs.hparams['best_model'] = checkpoint_callback.best_model_path
 
     # save the model
