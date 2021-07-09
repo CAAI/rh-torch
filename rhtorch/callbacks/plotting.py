@@ -9,10 +9,8 @@ import torchio as tio
 class Image2ImageLogger(Callback):
     def __init__(self, data_module, config=None):
         super().__init__()
-        val_data = data_module.val_dataloader()
-        batch = next(iter(val_data))
+        self.data_module = data_module
         self.color_channels = config['color_channels_in']
-        self.X, self.y = self.prepare_batch(batch)
 
         # plotting properties from config
         plot_configs = config['plotting_callback']
@@ -21,7 +19,13 @@ class Image2ImageLogger(Callback):
         self.vmin = plot_configs['vmin']
         self.vmax = plot_configs['vmax']
         self.titles = ['Input', 'Target', 'Prediction']
-    
+
+    def on_sanity_check_start(self, trainer, pl_module):
+        # Loading one batch of data when model.fit is called
+        val_data = self.data_module.val_dataloader()
+        batch = next(iter(val_data))
+        self.X, self.y = self.prepare_batch(batch)
+
     def prepare_batch(self, batch):
         # necessary distinction for use of TORCHIO
         if isinstance(batch, dict):
@@ -51,7 +55,7 @@ class Image2ImageLogger(Callback):
         d3 : numpy.ndarray
             Infered data based on input data
         color_channel_axis : int, optional
-            Axis for color channel in the numpy array . 
+            Axis for color channel in the numpy array .
             Default is 0 for Pytorch models (cc, dimx, dimy, dimz)
             Use 3 for TF models (dimx, dimy, dimz, cc)
         vmin : Lower bound for color channel. Default (None) used to plot full range
