@@ -7,3 +7,6 @@ rhtorch/models/dev/*
 !rhtorch/models/dev/__init__.py
 my.stdout
 .spyproject/
+rb82/
+fdg18/
+*.stdout

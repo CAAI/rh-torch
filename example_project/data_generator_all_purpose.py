@@ -343,7 +343,7 @@ class DatasetFullVolume(Dataset):
 
     @staticmethod
     def ct_normalization(data):
-        return (data + 1024.0) / 2000.0
+        return (data + 1024.0) / 4095.0
 
     def data_generation(self, patient_id):
         """ Generates data of batch_size samples """
