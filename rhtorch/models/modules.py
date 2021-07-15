@@ -9,7 +9,7 @@ import torchio as tio
 
 
 class LightningAE(pl.LightningModule):
-    def __init__(self, hparams, in_shape=(2, 128, 128, 128)):
+    def __init__(self, hparams, in_shape=(1, 128, 128, 112)):
         super().__init__()
         try:
             self.hparams = hparams
