@@ -2,15 +2,17 @@ import torch
 import torchio as tio
 from torch.utils.data import DataLoader
 from torchio.data import GridSampler, GridAggregator
-from rhtorch.config_utils import UserConfig
-from rhtorch.utilities.modules import recursive_find_python_class
+from rhtorch.utilities.config import UserConfig
+from rhtorch.utilities.modules import (
+    recursive_find_python_class,
+    find_best_checkpoint
+)
 import numpy as np
 from pathlib import Path
 import argparse
 import nibabel as nib
 import sys
 from tqdm import tqdm
-import os
 
 
 def infer_data_from_model(model, subject, ps=None, po=None, bs=1, GPU=True):
@@ -50,9 +52,6 @@ def save_nifty(data, ref, filename_out):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Infer new data from input model.')
-    parser.add_argument("-i", "--input",
-                        help="Model directory. Should contain config.yaml file and model checkpoints. Will use current working directory if nothing passed",
-                        type=str, default=os.getcwd())
     parser.add_argument("-c", "--config",
                         help="Config file of saved model",
                         type=str, default='config.yaml')
@@ -64,18 +63,17 @@ if __name__ == '__main__':
                         action="store_true", default=False)
 
     args = parser.parse_args()
-    model_dir = Path(args.input)
     test = args.test
 
     # load configs in inference mode
-    user_configs = UserConfig(model_dir, arguments=args, mode='infer')
+    user_configs = UserConfig(args, mode='infer')
+    model_dir = user_configs.rootdir
     configs = user_configs.hparams
 
     project_dir = Path(configs['project_dir'])
     project_id = project_dir.name
     data_dir = Path(configs['data_folder'])
     target_filename = configs['target_files']['name'][0]
-    model_dir = Path(configs['model_dir'])
     model_name = configs['model_name']
     infer_dir = model_dir.joinpath('inferences')
     infer_dir.mkdir(parents=True, exist_ok=True)
@@ -100,13 +98,8 @@ if __name__ == '__main__':
         epoch_suffix = ''
     # Not done training. Load the most recent (best) ckpt
     else:
-        ckpt_dir = project_dir.joinpath('trained_models',
-                                         model_name,
-                                         'checkpoints')
-        # Get the most recent save, ignoring last.ckpt.
-        paths = sorted(Path(ckpt_dir).iterdir(), key=os.path.getmtime)
-        paths = [p for p in paths if not p.name == 'last.ckpt']
-        ckpt_path = paths[-1]
+        ckpt_path = find_best_checkpoint(project_dir.joinpath(
+            'trained_models', model_name, 'checkpoints'))
         epoch_suffix = None
     ckpt = torch.load(ckpt_path)
     if epoch_suffix is None:

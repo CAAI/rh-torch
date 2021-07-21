@@ -4,7 +4,6 @@ import torch
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
-# from torch.utils.data import DataLoader
 import os
 import sys
 from pathlib import Path
@@ -12,19 +11,16 @@ import argparse
 
 # library package imports
 from rhtorch.callbacks import plotting
-from rhtorch.config_utils import UserConfig
+from rhtorch.utilities.config import UserConfig
 from rhtorch.utilities.modules import recursive_find_python_class
 
 
 def main():
     parser = argparse.ArgumentParser(
         description='Runs training on dataset in the input directory and config.yaml')
-    parser.add_argument("-i", "--input",
-                        help="Project directory. Should contain data folder to train on + config file + data_generator. Will use current working directory if nothing passed",
-                        type=str, default=os.getcwd())
     parser.add_argument("-c", "--config",
                         help="Config file else than 'config.yaml' in project directory (input dir)",
-                        type=str, default='config.yaml')
+                        type=str, default=os.getcwd() + '/config.yaml')
     parser.add_argument("-k", "--kfold",
                         help="K-value for selecting train/test split subset. Default k=0",
                         type=int, default=0)
@@ -46,11 +42,9 @@ def main():
                         type=str, default='')
 
     args = parser.parse_args()
-    project_dir = Path(args.input)
+    user_configs = UserConfig(args)
+    project_dir = user_configs.rootdir
     is_test = args.test
-
-    # load configs from file + additional info from args
-    user_configs = UserConfig(project_dir, args)
 
     # setting up test
     if is_test:
@@ -59,14 +53,10 @@ def main():
         user_configs.create_model_name()  # Update name using newly set epoch
         os.environ['WANDB_MODE'] = 'dryrun'
     configs = user_configs.hparams
-
-    print("##### USER CONFIGS #######\n")
-    for k, v in configs.items():
-        print(k.ljust(40), v)
-    print("\n##########################")
+    user_configs.pprint()
 
     # Set local data_generator
-    sys.path.insert(1, args.input)
+    sys.path.insert(1, str(project_dir))
     import data_generator
     data_gen = getattr(data_generator, configs['data_generator'])
     data_module = data_gen(configs, quick_test=is_test)
@@ -130,12 +120,15 @@ def main():
     checkpoint_dir = model_path.joinpath('checkpoints')
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
     existing_checkpoint = checkpoint_dir.joinpath('last.ckpt')
-    if not existing_checkpoint.exists():
-        existing_checkpoint = None
+    existing_checkpoint = None \
+        if not existing_checkpoint.exists() else str(existing_checkpoint)
+    checkpoint_dir = str(checkpoint_dir)
+    # str() added to fix fsspec error with pathlib.path.stat() missing
+    # follow_symlinks argument
 
     checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
-        dirpath=str(checkpoint_dir), # Fixes fsspec error with pathlib.path.stat() missing follow_symlinks argument
+        dirpath=checkpoint_dir,
         filename='Checkpoint_min_val_loss-{epoch:03d}',
         save_top_k=3,       # saves 3 best models based on monitored value
         save_last=True,     # additionally overwrites a file last.ckpt after each epoch
@@ -165,7 +158,7 @@ def main():
     trainer.fit(model, datamodule=data_module)
 
     # add useful info to saved configs
-    user_configs.hparams['model_dir'] = str(model_path)
+    # user_configs.hparams['model_dir'] = str(model_path)
     user_configs.hparams['best_model'] = checkpoint_callback.best_model_path
 
     # save the model
