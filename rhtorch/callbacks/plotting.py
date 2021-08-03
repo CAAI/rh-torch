@@ -1,5 +1,7 @@
 from pytorch_lightning.callbacks import Callback
 from torch.utils.data import DataLoader
+from torchvision.utils import make_grid
+import torchvision.transforms.functional as F
 import wandb
 import matplotlib.pyplot as plt
 import numpy as np
@@ -9,7 +11,7 @@ import torch
 class Image2ImageLogger(Callback):
     def __init__(self, model, data_module, config=None):
         super().__init__()
-        
+
         plot_configs = config['plotting_callback']
         batch_size = config['batch_size']
         num_plots = plot_configs['num_plots'] if 'num_plots' in plot_configs else batch_size
@@ -17,7 +19,7 @@ class Image2ImageLogger(Callback):
         if num_plots > batch_size:
             num_plots = batch_size
             print('Number of plots for callback currently set <= batch_size until bug fix.')
-            
+
         val_data = DataLoader(data_module.val_set, num_plots)
         # loading a first batch as default
         batch = next(iter(val_data))
@@ -86,6 +88,24 @@ class Image2ImageLogger(Callback):
         plt.close()
         return wandb_im
 
+    def get_slices(self, im_data, slice_num = 4):
+        # Get central slice
+        idx = im_data.shape[5]//2
+        im_arr = []
+        for i in range(idx - int(slice_num/2), idx + int(slice_num/2)):
+            im_arr.append(im_data[0,...][:,:,:,i])
+        return im_arr
+
+    #def plot_grid(X, y, y_hat):
+        #sample_imgs = [X[0,...][:,:,:,50], y[0,...][:,:,:,50], y_hat[0,...][:,:,:,50]]
+        #images = list(map(lambda x: get_slices(x))
+        #sample_imgs = [self.get_slices(im1, im2, im3)
+        #                for im1, im2, im3 in zip(X, y, y_hat)]
+        #grid = make_grid(sample_imgs)
+        #print(grid.shape)
+        #grid_pil = F.to_pil_image(grid)
+        #wandb_img = wandb.Image(grid_pil, caption="My cool imgs")
+
     def on_validation_epoch_end(self, trainer, pl_module):
         # Dataloader loads on CPU --> pass to GPU
         X = self.X.to(device=pl_module.device)
@@ -101,4 +121,5 @@ class Image2ImageLogger(Callback):
                 for im1, im2, im3 in zip(X, y, y_hat)]
 
         # add to logger like so
-        trainer.logger.experiment.log({"Sample images": figs})
+        #trainer.logger.experiment.log({"Grid": wandb_img, "Sample images": figs}, commit = False)
+        trainer.logger.experiment.log({"Sample images": figs}, commit = False)
