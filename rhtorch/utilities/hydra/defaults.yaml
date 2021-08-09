@@ -1,0 +1,4 @@
+models:
+  generator:
+    name: Unet3D
+    filters: 32
