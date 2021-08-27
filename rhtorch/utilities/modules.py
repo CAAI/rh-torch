@@ -63,19 +63,17 @@ def find_best_checkpoint(ckpt_dir: Union[str, Path],
     paths = [p for p in ckpt_dir.iterdir() if not p.name == 'last.ckpt']
     if len(paths) == num_saved_checkpoints:
         # Read the best from the last.ckpt
-        print(f'OK, {len(paths)}')
-        print(len(paths) == num_saved_checkpoints)
         ckpt = torch.load(ckpt_dir/'last.ckpt')['callbacks'][ModelCheckpoint]['best_model_path']
         print(torch.load(ckpt_dir/'last.ckpt')['callbacks'][ModelCheckpoint])
-        best_path = ckpt_dir.joinpath('last.ckpt')
-        return best_path
+        best_path = ckpt_dir.joinpath('Checkpoint_min_val_loss-epoch=581.ckpt')
+        return ckpt
+    else:
         # Training was performed over several runs, resulting in multiple
         # "best" checkpoints saved. Need to run through them all to see which
         # one is was in fact the best
         best_score = np.inf
         best_path = None
         for p in paths:
-            print(f'HERE:{p}')
             ckpt = torch.load(p)['callbacks'][ModelCheckpoint]
             if (val_loss := ckpt['best_model_score'].tolist()) < best_score:
                 best_score = val_loss
