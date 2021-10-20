@@ -113,7 +113,7 @@ class LightningAE(pl.LightningModule):
 
 
 class LightningRAE(LightningAE):
-    def __init__(self, hparams, in_shape=(2, 128, 128, 128)):
+    def __init__(self, hparams, in_shape=(1, 128, 128, 112)):
         super().__init__(hparams, in_shape)
 
     def forward(self, image):
@@ -144,7 +144,7 @@ class LightningRAE(LightningAE):
 
 class LightningPix2Pix(LightningAE):
 
-    def __init__(self, hparams, in_shape=(2, 128, 128, 128)):
+    def __init__(self, hparams, in_shape=(1, 128, 128, 112)):
         super().__init__(hparams, in_shape)
 
         # Calculate output shape of D (PatchGAN) (4x halving for the 4 Conv3D layers)
