@@ -279,5 +279,115 @@ class Res3DUnet(nn.Module):
             return self.upsample(x)
 
 
+class Res3DUnet_drop(nn.Module):
+    def __init__(self, in_channels, g_filters=[64, 128, 256, 512], do_sigmoid=False, **kwargs):
+        super().__init__()
+
+        self.input_layer = nn.Sequential(
+            nn.Conv3d(in_channels, g_filters[0], kernel_size=3, padding=1),
+            nn.BatchNorm3d(g_filters[0]),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            nn.Conv3d(g_filters[0], g_filters[0], kernel_size=3, padding=1),
+        )
+        self.input_skip = nn.Sequential(
+            nn.Conv3d(in_channels, g_filters[0], kernel_size=3, padding=1)
+        )
+
+        self.residual_conv_1 = self.ResidualConv_drop(
+            g_filters[0], g_filters[1], 2, 1, 0.2)
+        self.residual_conv_2 = self.ResidualConv_drop(
+            g_filters[1], g_filters[2], 2, 1, 0.3)
+
+        self.bridge = self.ResidualConv_drop(g_filters[2], g_filters[3], 2, 1, 0.3)
+
+        self.upsample_1 = self.Upsample(g_filters[3], g_filters[3], 2, 2)
+        self.up_residual_conv1 = self.ResidualConv_drop(
+            g_filters[3] + g_filters[2], g_filters[2], 1, 1, 0.3)
+
+        self.upsample_2 = self.Upsample(g_filters[2], g_filters[2], 2, 2)
+        self.up_residual_conv2 = self.ResidualConv_drop(
+            g_filters[2] + g_filters[1], g_filters[1], 1, 1, 0.2)
+
+        self.upsample_3 = self.Upsample(g_filters[1], g_filters[1], 2, 2)
+        self.up_residual_conv3 = self.ResidualConv_drop(
+            g_filters[1] + g_filters[0], g_filters[0], 1, 1, 0.1)
+
+        if do_sigmoid:
+            self.output_layer = nn.Sequential(
+                nn.Conv3d(g_filters[0], 1, 1, 1),
+                nn.Sigmoid(),
+            )
+        else:
+            self.output_layer = nn.Sequential(
+                nn.Conv3d(g_filters[0], 1, 1, 1),
+            )
+
+    def forward(self, x):
+        # Encode
+        x1 = self.input_layer(x) + self.input_skip(x)
+        x2 = self.residual_conv_1(x1)
+        x3 = self.residual_conv_2(x2)
+        # Bridge
+        x4 = self.bridge(x3)
+        # Decode
+        x4 = self.upsample_1(x4)
+        x5 = torch.cat([x4, x3], dim=1)
+
+        x6 = self.up_residual_conv1(x5)
+
+        x6 = self.upsample_2(x6)
+        x7 = torch.cat([x6, x2], dim=1)
+
+        x8 = self.up_residual_conv2(x7)
+
+        x8 = self.upsample_3(x8)
+        x9 = torch.cat([x8, x1], dim=1)
+
+        x10 = self.up_residual_conv3(x9)
+
+        output = self.output_layer(x10)
+
+        return output
+
+    class ResidualConv_drop(nn.Module):
+        def __init__(self, input_dim, output_dim, stride, padding,dropout):
+            super().__init__()
+
+            self.conv_block = nn.Sequential(
+                nn.BatchNorm3d(input_dim),
+                nn.ReLU(),
+                nn.Dropout(dropout),
+                nn.Conv3d(
+                    input_dim, output_dim, kernel_size=3, stride=stride, padding=padding
+                ),
+                nn.BatchNorm3d(output_dim),
+                nn.ReLU(),
+                nn.Dropout(dropout),
+                nn.Conv3d(output_dim, output_dim, kernel_size=3, padding=1),
+            )
+            self.conv_skip = nn.Sequential(
+                nn.Conv3d(input_dim, output_dim, kernel_size=3,
+                          stride=stride, padding=1),
+                nn.BatchNorm3d(output_dim),
+            )
+
+        def forward(self, x):
+
+            return self.conv_block(x) + self.conv_skip(x)
+
+    class Upsample(nn.Module):
+        def __init__(self, input_dim, output_dim, kernel, stride):
+            super().__init__()
+
+            self.upsample = nn.ConvTranspose3d(
+                input_dim, output_dim, kernel_size=kernel, stride=stride
+            )
+
+        def forward(self, x):
+            return self.upsample(x)
+
+
+
 """ DEPENDENCIES """
 UNet3DFullConv = UNet3D
