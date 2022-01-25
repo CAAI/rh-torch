@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
-from setuptools import setup, find_packages
+import setuptools
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
-setup(
+setuptools.setup(
      name='rhtorch',
      version='0.1.3',
      author="Claes Ladefoged",
@@ -24,9 +24,11 @@ setup(
          'torch',
          'pytorch_lightning',
          'torchio',
+         'scikit-learn',
          'wandb',
          'ruamel.yaml',
-         'PyWavelets'
+         'PyWavelets',
+         'monai'
     ],
     classifiers=[
         'Programming Language :: Python :: 3.8',
