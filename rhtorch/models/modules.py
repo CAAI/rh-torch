@@ -43,6 +43,7 @@ class LightningAE(pl.LightningModule):
         if isinstance(batch, dict):
             # first input channel
             x = batch['input0'][tio.DATA]
+            #mask = batch['input1'][tio.DATA]
             # other input channels if any
             for i in range(1, self.in_channels):
                 x_i = batch[f'input{i}'][tio.DATA]
@@ -51,6 +52,7 @@ class LightningAE(pl.LightningModule):
             # target channel
             y = batch['target0'][tio.DATA]
             return x, y
+            #return x, y, mask
 
         # normal use case
         else:
@@ -153,7 +155,7 @@ class LightningRAE_mask(LightningAE):
         return image - self.generator(image)
 
     def training_step(self, batch, batch_idx):
-        x, y = self.prepare_batch(batch)
+        x, y, mask = self.prepare_batch(batch)
         # transform target image to noise image
         y = (x - y)
         # use generator instead of forward here to predict noise
@@ -167,7 +169,7 @@ class LightningRAE_mask(LightningAE):
         return loss
 
     def validation_step(self, val_batch, batch_idx):
-        x, y = self.prepare_batch(val_batch)
+        x, y, mask = self.prepare_batch(val_batch)
         y_hat = self.forward(x)
         loss = self.g_loss_val(y_hat, y)
         self.log('val_loss', loss)

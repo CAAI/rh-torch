@@ -27,6 +27,7 @@ class Image2ImageLogger(Callback):
         
         batch = next(iter(val_data))
         self.X, self.y = model.prepare_batch(batch)
+        #self.X, self.y, self.mask = model.prepare_batch(batch)
         self.color_channels = config['color_channels_in']
 
         # plotting properties from config
