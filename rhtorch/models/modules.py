@@ -10,7 +10,7 @@ import numpy as np
 
 
 class LightningAE(pl.LightningModule):
-    def __init__(self, hparams, in_shape=(1, 128, 128, 112)):
+    def __init__(self, hparams, in_shape=(2, 128, 128, 112)):
         super().__init__()
         try:
             self.hparams = hparams
@@ -117,7 +117,7 @@ class LightningAE(pl.LightningModule):
 
 
 class LightningRAE(LightningAE):
-    def __init__(self, hparams, in_shape=(1, 128, 128, 112)):
+    def __init__(self, hparams, in_shape=(2, 128, 128, 112)):
         super().__init__(hparams, in_shape)
 
     def forward(self, image):
@@ -147,7 +147,7 @@ class LightningRAE(LightningAE):
 
 
 class LightningRAE_mask(LightningAE):
-    def __init__(self, hparams, in_shape=(1, 128, 128, 112)):
+    def __init__(self, hparams, in_shape=(2, 128, 128, 112)):
         super().__init__(hparams, in_shape)
 
     def forward(self, image):
@@ -180,7 +180,7 @@ class LightningRAE_mask(LightningAE):
 
 class LightningPix2Pix(LightningAE):
 
-    def __init__(self, hparams, in_shape=(1, 128, 128, 112)):
+    def __init__(self, hparams, in_shape=(2, 128, 128, 112)):
         super().__init__(hparams, in_shape)
 
         # Calculate output shape of D (PatchGAN) (4x halving for the 4 Conv3D layers)
