@@ -11,10 +11,12 @@ import torch
 class Image2ImageLogger(Callback):
     def __init__(self, model, data_module, config=None):
         super().__init__()
-
         plot_configs = config['plotting_callback']
         num_plots = plot_configs['num_plots'] if 'num_plots' in plot_configs else config['batch_size']
-        
+
+        # module 
+        self.module_name = config['module']
+
         # custom dataloader with num_plots as batch_size
         if hasattr(data_module, 'val_queue') and data_module.val_queue:
             # for GenericTIODataModule users
@@ -26,8 +28,10 @@ class Image2ImageLogger(Callback):
             raise NotImplementedError(f"The datamodule instantiated from {data_module.__class__} is missing 'val_set' attribute, which should be defined in setup(). See GenericTIODataModule for example.")
         
         batch = next(iter(val_data))
-        self.X, self.y = model.prepare_batch(batch)
-        #self.X, self.y, self.mask = model.prepare_batch(batch)
+        if 'mask' in self.module_name:
+            self.X, self.y, self.mask = model.prepare_batch(batch)
+        else:
+            self.X, self.y = model.prepare_batch(batch)
         self.color_channels = config['color_channels_in']
 
         # plotting properties from config

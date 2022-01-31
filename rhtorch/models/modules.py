@@ -123,6 +123,8 @@ class LightningAE(pl.LightningModule):
         self.g_loss_val = getattr(tm, hparams['g_loss'])()  # MAE
         self.g_params = self.generator.parameters()
 
+        # module 
+        self.module_name = hparams['module']
         # additional losses
         self.mse_loss = tm.MeanSquaredError()
         
@@ -132,11 +134,12 @@ class LightningAE(pl.LightningModule):
         return self.generator(image)
 
     def prepare_batch(self, batch):
+        print(self.module_name)
         # necessary distinction for use of TORCHIO
         if isinstance(batch, dict):
             # first input channel
             x = batch['input0'][tio.DATA]
-            #mask = batch['input1'][tio.DATA]
+            x1 = x
             # other input channels if any
             for i in range(1, self.in_channels):
                 x_i = batch[f'input{i}'][tio.DATA]
@@ -144,9 +147,14 @@ class LightningAE(pl.LightningModule):
                 x = torch.cat((x, x_i), axis=1)
             # target channel
             y = batch['target0'][tio.DATA]
-            return x, y
-            #return x, y, mask
 
+            if 'mask' in self.module_name:
+                print('Using masked loss')
+                mask = batch['input1'][tio.DATA]
+                return x1, y, mask 
+            else:
+                return x, y
+            
         # normal use case
         else:
             return batch
@@ -241,8 +249,38 @@ class LightningRAE(LightningAE):
         return loss
 
 
+class LightningAE_mask(LightningAE):
+    def __init__(self, hparams, in_shape=(1, 128, 128, 112)):
+        super().__init__(hparams, in_shape)
+
+    def forward(self, image):
+        return self.generator(image)
+
+    def training_step(self, batch, batch_idx):
+        x, y, mask = self.prepare_batch(batch)
+        y_hat = self.forward(x)
+        y_masked = y * mask
+        y_hat_masked = y_hat * mask
+        train_loss = self.g_loss_train(y_hat_masked, y_masked)
+        #loss = torch.sum(train_loss)
+
+        self.log('train_loss', train_loss)
+        self.log('train_mse', self.mse_loss(y_hat, y))
+
+        return train_loss
+
+    def validation_step(self, val_batch, batch_idx):
+        x, y, mask = self.prepare_batch(val_batch)
+        y_hat = self.forward(x)
+        loss = self.g_loss_val(y_hat, y)
+        self.log('val_loss', loss)
+        self.log('val_mse', self.mse_loss(y_hat, y))
+
+        return loss
+
+
 class LightningRAE_mask(LightningAE):
-    def __init__(self, hparams, in_shape=(2, 128, 128, 112)):
+    def __init__(self, hparams, in_shape=(1, 128, 128, 112)):
         super().__init__(hparams, in_shape)
 
     def forward(self, image):
@@ -255,20 +293,22 @@ class LightningRAE_mask(LightningAE):
         y = (x - y)
         # use generator instead of forward here to predict noise
         y_hat = self.generator(x)
-        train_loss = self.g_loss_train(y_hat, y)*mask
-        loss = torch.sum(train_loss) / torch.sum(mask)
+        y_masked = y * mask
+        y_hat_masked = y_hat * mask
+        train_loss = self.g_loss_train(y_hat_masked, y_masked)
+        #loss = torch.sum(train_loss)
 
-        self.log('train_loss', loss)
-        self.log('train_mse', self.mse_loss(y_hat, y))
+        self.log('train_loss', train_loss)
+        #self.log('train_mse', self.mse_loss(y_hat, y))
 
-        return loss
+        return train_loss
 
     def validation_step(self, val_batch, batch_idx):
         x, y, mask = self.prepare_batch(val_batch)
         y_hat = self.forward(x)
         loss = self.g_loss_val(y_hat, y)
         self.log('val_loss', loss)
-        self.log('val_mse', self.mse_loss(y_hat, y))
+        #self.log('val_mse', self.mse_loss(y_hat, y))
 
         return loss
 
