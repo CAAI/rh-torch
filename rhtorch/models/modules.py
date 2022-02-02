@@ -134,7 +134,6 @@ class LightningAE(pl.LightningModule):
         return self.generator(image)
 
     def prepare_batch(self, batch):
-        print(self.module_name)
         # necessary distinction for use of TORCHIO
         if isinstance(batch, dict):
             # first input channel
